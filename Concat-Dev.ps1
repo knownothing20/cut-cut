@@ -19,14 +19,22 @@ if ($useRelease) {
 } else {
     Write-Host "Local source build (Cargo quick profile): $head"
     if (!$Check) {
-        $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-        $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-        if (!$vs) { throw 'Visual C++ x64 build tools were not found.' }
-        $tools = Get-ChildItem "$vs\VC\Tools\MSVC" -Directory |
-            Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
+        $vc = Join-Path $PSScriptRoot 'vendor\dev\msvc\VC\Tools\MSVC\14.44.35207'
+        if (!(Test-Path "$vc\bin\Hostx64\x64\link.exe") -or !(Test-Path "$vc\lib\x64\msvcprt.lib")) {
+            $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+            if (!(Test-Path $vswhere)) { throw 'Install the MSVC v143 x64 build tools.' }
+            $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+            if (!$vs) { throw 'Install the MSVC v143 x64 build tools.' }
+            $tools = Get-ChildItem "$vs\VC\Tools\MSVC" -Directory |
+                Where-Object { [version]$_.Name -ge [version]'14.44' } |
+                Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
+            if (!$tools) { throw 'Install MSVC 14.44 or newer to link the upstream Skia Windows binaries.' }
+            $vc = $tools.FullName
+        }
+        $env:VCINSTALLDIR = (Resolve-Path "$vc\..\..\..").Path + '\'
+        $env:VCToolsInstallDir = $vc + '\'
         $sdk = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots').KitsRoot10
         $version = (Get-ChildItem (Join-Path $sdk 'Lib') -Directory | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1).Name
-        $vc = $tools.FullName
         if (!$env:FFMPEG_DIR) {
             $env:FFMPEG_DIR = Join-Path $PSScriptRoot 'vendor\dev\ffmpeg-n8.1.3-9-g29e619e767-win64-lgpl-shared-8.1'
         }
@@ -43,6 +51,7 @@ if ($useRelease) {
         $env:CMAKE_GENERATOR = 'Ninja'
         $env:CC = 'clang-cl'
         $env:CXX = 'clang-cl'
+        $env:CXXFLAGS = "/EHsc $env:CXXFLAGS".Trim()
         $env:PATH = "$vc\bin\Hostx64\x64;$sdk\bin\$version\x64;$env:LIBCLANG_PATH;$env:FFMPEG_DIR\bin;$env:ORT_LIB_LOCATION;$env:PATH"
         $env:LIB = "$vc\lib\x64;$sdk\Lib\$version\ucrt\x64;$sdk\Lib\$version\um\x64;$env:LIB"
         $env:INCLUDE = "$vc\include;$sdk\Include\$version\ucrt;$sdk\Include\$version\shared;$sdk\Include\$version\um;$sdk\Include\$version\winrt;$env:INCLUDE"
