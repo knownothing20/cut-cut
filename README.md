@@ -1,3 +1,7 @@
+# cut-cut
+
+本仓库用于 cut-cut 的后续开发。初版基于 [jub0t/Concat v0.2.12](https://github.com/jub0t/Concat/releases/tag/v0.2.12)，保留上游提交历史、许可证和第三方声明。以下沿用该版本的官方说明，其中下载、赞助和社区链接均指向上游项目。[上游源码](https://github.com/jub0t/Concat)
+
 <p align="center">
   <img src="https://cdn.jsdelivr.net/gh/jub0t/Concat@main/assets/concat-mark-dark.png" alt="Concat" width="100" />
 </p>
